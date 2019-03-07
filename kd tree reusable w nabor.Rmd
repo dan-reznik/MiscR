@@ -1,0 +1,97 @@
+---
+title: "Demonstração de KD-Tree Reutilizável"
+output: html_notebook
+author: "Dan S. Reznik <dreznik@gmail.com>"
+date: "25/11/2017"
+---
+
+A kd-tree é uma estrutura de dados para rápida identificação de nearest neighbors (NNs). Dados N pontos, a árvore é criada uma vez em O(n log(n)). Cada novo ponto apresentado resulta numa busca de O(log(n)) para seus NNs o que é radicalmente mais rápido q uma busca linear quando N >> 1. Aqui usaremos o pacote "nabor" que permite q uma kd-tree seja gerada e depois reutilizada.
+
+Carrega os pacotes necessários.
+
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+library(stringr)
+library(magrittr)
+library(nabor)
+```
+
+Cria uma núvem de 100 pontos aleatórios e desenha-os
+
+```{r}
+ptsN<-100
+maxL<-.5
+myPts <- data_frame(x=runif(ptsN,-maxL,maxL),
+                    y=runif(ptsN,-maxL,maxL))
+ggplot(myPts,aes(x=x,y=y))+ geom_point() + coord_fixed()
+```
+
+Cria KD-tree "once and for all"
+
+```{r}
+tree <- WKNNF(as.matrix(myPts))
+```
+
+Cria data frame com query points (N=2)
+
+```{r}
+qs <- data_frame(x=c(0.25,-.25),y=c(0.25,-.25))
+```
+
+Query a kd-tree para retornar os k vizinhos mais próximos a cada query point.
+
+```{r}
+treeQs <- tree$query(as.matrix(qs), k=5, eps=0)
+```
+
+Converte estrutura de saída da query num data_frame narrow para uso pelo ggplot.
+
+```{r}
+query_to_df <- function(pts,treeQs) {
+  ids <- t(treeQs$nn.idx) %>%
+    as_tibble() %>%
+    rownames_to_column("neigh") %>%
+    gather(queryId,nnId,starts_with("V")) %>%
+    mutate(queryId=as.integer(str_sub(queryId,start=2)),
+           x=pts$x[nnId],y=pts$y[nnId])
+  
+  ds <- t(treeQs$nn.dists) %>%
+    as_tibble() %>%
+    rownames_to_column("neigh") %>%
+    gather(queryId,dist,starts_with("V")) %>%
+    select(dist)
+  
+  bind_cols(ids,ds)
+}
+```
+
+Mostra resultados num data frame
+
+```{r}
+qs_df <- query_to_df(myPts,treeQs) %T>% print
+```
+
+Reutiliza a tree para um outro ponto
+
+```{r}
+qs2<-data_frame(x=-.25,y=.25)
+qs_df2 <- query_to_df(myPts, tree$query(as.matrix(qs2), k=10, eps=0))
+```
+
+Plota em cinza os pontos na kd-tree, em vermelho os query points da primeira query, e em azul os nearest neighbors, em verde os query points (e seus neighbors) da segunda query
+
+```{r}
+ggplot(myPts,aes(x=x,y=y)) +
+  geom_point(size=I(1),color="grey") +
+  geom_point(data=qs,mapping=aes(x,y),color="red",size=3) +
+  geom_point(data=qs2,mapping=aes(x,y),color="#00ff00",size=3) +
+  geom_point(data=qs_df%>%bind_rows(qs_df2),mapping=aes(x,y),color="blue",size=3) +
+  geom_segment(data=qs_df,mapping=aes(x=qs$x[queryId],y=qs$y[queryId],xend=x,yend=y)) +
+  geom_segment(data=qs_df2,mapping=aes(x=qs2$x[queryId],y=qs2$y[queryId],xend=x,yend=y)) +
+  coord_fixed() +
+  theme_bw()
+```
+
+Abraços e boa sorte!
+
+--Dan

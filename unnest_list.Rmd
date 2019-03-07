@@ -1,0 +1,89 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+df <- data_frame(x=list( c(0,1,2,3), c(4,5,6), c(7,8,9,10,11)),
+                 y=c("a","b","c"))
+df
+```
+
+```{r}
+unnest_cols <- function(df, col) {
+  col <- enquo(col)
+  df %>% 
+    mutate(.id=row_number(), # so spread() will know what to do
+           .l=map(!!col,names)) %>%
+    unnest(.l,!!col) %>%
+    spread(.l,!!col,convert=T) %>%
+    select(-.id)
+}
+```
+
+```{r}
+df_test <- tribble(
+~col,~stuff,
+list(a=10,b=11,c=12),"line1",
+list(a=20,b=21,c=22),"line2",
+list(a=30,b=31,c=32),"line3"
+)
+unnest_cols(df_test,col)
+```
+
+
+
+```{r}
+extract_list <- function(df, col) { # shortest most elegant fastest (see below)
+  col <- enquo(col)
+  df %>% 
+    mutate(.l=map(!!col,~str_c(quo_name(col),1:length(.x)))) %>% 
+    unnest(.l,!!col) %>%
+    spread(.l,!!col)
+}
+
+# doesn't need the spread "lookup", but slower
+extract_list_do_call <- function(df, col) {
+  col <- enquo(col)
+  max <- max(map_int(df%>%pull(!!col),length))
+  df %>% select(- !!col) %>%
+    bind_cols(df %>% pull(!!col) %>%
+                map(~c(.x,rep(NA,max-length(.x)))) %>% # complete shorter vecs w NAs
+                transpose %>%
+                do.call(data_frame,.) %>%
+                set_names(str_c(quo_name(col),1:ncol(.))) %>%
+                mutate_all(as.numeric))
+}
+
+extract_list_div <- function(df,col) {
+  col <- enquo(col)
+  div <- max(map_int(df%>%pull(!!col),length))
+  df %>%
+    mutate(.id=row_number()) %>%
+    unnest(!!col) %>%
+    mutate(.col=sprintf("X%d",1+(row_number()-1)%%div)) %>%
+    spread(.col,!!col) %>%
+    select(-.id)
+}
+```
+
+```{r}
+extract_list(df,x)
+```
+
+Works with lists not of the same length
+
+```{r}
+df %>% extract_list_do_call(x)
+```
+
+```{r}
+myCols <- 1000
+myRows <- 100
+df_2 <- data_frame(y=1:myRows,x=rep(list(1:myCols),myRows))
+microbenchmark::microbenchmark(extract_list(df_2,x),
+                               extract_list_do_call(df_2,x),
+                               extract_list_div(df_2,x))
+```
+

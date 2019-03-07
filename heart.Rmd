@@ -1,0 +1,76 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+df <- data_frame(t=seq(-pi,0,pi/20),
+                 x1=16*sin(t)^2,
+                 x2=-x1,
+                 y=14*cos(t)-7*cos(2*t)-2*cos(3*t)-2*cos(4*t)
+) %>%
+  gather(side,x,x1,x2) %>% 
+  mutate_at(vars(x,y),~round(.,3)) %>%
+  mutate(row=row_number())
+```
+
+
+```{r}
+df %>%
+  ggplot(aes(x=x,y=y,label=as.character(row))) +
+  geom_polygon(fill="red") +
+  geom_point (color="black") +
+  geom_path() +
+  ggrepel::geom_label_repel(color="black", size= 5, nudge_y = 1) +
+  coord_fixed() +
+  theme_minimal()
+```
+
+
+```{r}
+df %>%
+  #slice(side) %>% 
+  ggplot(aes(x=x,y=y,fill=side,label=as.character(row))) +
+  geom_polygon() +
+  geom_point(color="black") +
+  geom_path() +
+  ggrepel::geom_label_repel(color="black", fill="white",size= 5, nudge_y = 1) +
+  coord_fixed() +
+  theme_minimal()
+```
+
+```{r}
+df %>%
+  mutate(x=x+if_else(side=="x1",2,-2),row=row_number()) %>%
+  ggplot(aes(x=x,y=y,label=row)) +
+  geom_polygon(aes(fill=side)) +
+  geom_point(color="black") +
+  geom_path() +
+  ggrepel::geom_label_repel(color="black", fill="white",size= 5, nudge_y = 1) +
+  coord_fixed() +
+  theme_minimal()
+```
+
+```{r}
+library(tidyverse)
+data_frame(t=seq(-pi,0,pi/40),
+           x=16*sin(t)^2,
+           x_crack=0,
+           y=13*cos(t)-3*cos(2*t)-2*cos(3*t)-2*cos(4*t)) %>%
+  bind_rows(data_frame(t=seq(0,1,.01),
+                       x=min(.$x),
+                       x_crack=(-20*(t%%.1)+.1*sin(32*pi*t))*(sin(pi*t)^.5),
+                       y=last(.$y)+(first(.$y)-last(.$y))*t)) %>%
+  transmute(y,x1=x+x_crack+1.5,x2=-x+x_crack-1.5) %>%
+  gather(side,x,x1,x2) %>%
+  ggplot(aes(x,y,group=side)) +
+  geom_polygon(fill="red") +
+  #geom_point (color="black") +
+  geom_path() +
+  coord_fixed() +
+  theme_minimal()
+```

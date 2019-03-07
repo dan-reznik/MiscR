@@ -1,0 +1,40 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+library(bit64)
+```
+
+```{r}
+zero64 <- as.integer64(0)
+max64 <- as.integer64('9223372036854775807')
+min64 <-  as.integer64('-9223372036854775807') # should accept one below but it doesn't
+min64b <- -max64 # works
+nums <- c(zero64,max64,min64,min64b)
+nums_df <- tibble(name=c("zero","max","min","minb"),
+                  dec=nums,
+                  bin=as.bitstring(nums),
+                  length=stringi::stri_length(bin))
+nums_df
+```
+
+```{r}
+as.integer64(as.numeric('0xffffffffffffffff'))
+```
+
+
+The library provides limits with specialized function:
+
+```{r}
+lim.integer64()
+as.bitstring(lim.integer64())
+```
+
+```{r}
+max64+1 # error
+min64-1 # should work but doesn't
+```
+
+
+

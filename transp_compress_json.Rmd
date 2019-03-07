@@ -1,0 +1,29 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+```
+
+```{r}
+json_row <- mtcars %>% toJSON()
+json_row %>% str_length
+```
+
+
+```{r}
+json_col <- mtcars %>% as.list() %>% toJSON()
+json_col %>% str_length
+```
+
+```{r}
+(json_col%>%str_length)/(json_row%>%str_length)
+```
+
+```{r}
+
+```
+

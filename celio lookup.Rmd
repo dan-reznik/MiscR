@@ -1,0 +1,22 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+Lê abas da tabela
+
+```{r}
+fonte <- read_xlsx("lookup for celio.xlsx", sheet="fonte")
+lookup <- read_xlsx("lookup for celio.xlsx", sheet="lookup")
+```
+
+Faz o lookup
+
+```{r}
+lookup %>% left_join(fonte,by="name")
+```

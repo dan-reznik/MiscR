@@ -1,0 +1,148 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+source: https://github.com/topepo/rstudio-conf-2018/tree/master/Materials
+
+```{r}
+library(tidyverse)
+library(broom)
+library(rsample)
+library(recipes)
+
+library(AmesHousing)
+```
+
+```{r}
+ames <- make_ames()
+ames %>% nrow
+```
+
+```{r}
+# Make sure that you get the same random numbers
+set.seed(4595)
+data_split <- initial_split(ames, prop=.75, strata = "Sale_Price")
+
+ames_train <- training(data_split)
+ames_test  <- testing(data_split)
+
+nrow(ames_train)/nrow(ames)
+```
+
+Compares train and test distributions of predicted variable
+
+```{r}
+ames_train %>% 
+  ggplot(aes(x = Sale_Price)) + 
+  geom_line(stat = "density", trim = TRUE) + 
+  geom_line(data = ames_test, 
+            stat = "density", 
+            trim = TRUE, col = "red") 
+```
+
+```{r}
+simple_lm <- lm(log10(Sale_Price) ~ Longitude + Latitude, data = ames_train)
+simple_lm_values <- augment(simple_lm)
+names(simple_lm_values)
+```
+
+```{r}
+summary(simple_lm)
+```
+
+10 fold cross validation
+
+```{r}
+set.seed(2453)
+cv_splits <- vfold_cv(ames_train, v = 10, strata = "Sale_Price")
+cv_splits
+```
+
+The `split` objects contain the information about the sample sizes
+
+```{r}
+cv_splits$splits[[1]]
+```
+
+Use the `analysis` and `assessment` functions to get the data
+
+```{r}
+analysis(cv_splits$splits[[1]]) %>% dim()
+assessment(cv_splits$splits[[1]]) %>% dim()
+```
+
+Create preprocessing recipe
+
+```{r}
+mod_rec <- recipe(Sale_Price ~ Longitude + Latitude + Neighborhood,
+                  data = ames_train) %>%
+  step_log(Sale_Price, base = 10) %>%
+    # Lump factor levels that occur in <= 5% of data as "other"
+  step_other(Neighborhood, threshold = 0.05) %>%
+  # Create dummy variables for _any_ factor variables
+  step_dummy(all_nominal())
+```
+
+Run the recipe
+
+```{r}
+mod_rec_trained <- prep(mod_rec, training = ames_train,
+                        retain = TRUE, verbose = TRUE)
+```
+
+```{r}
+mod_rec_trained
+```
+
+Apply recipe to data set ("bake" it)
+
+```{r}
+ames_test_dummies <- bake(mod_rec_trained, newdata = ames_test)
+names(ames_test_dummies)
+```
+
+Non-linear relationship between price and year built
+
+```{r}
+price_breaks <- (1:6)*(10^5)
+
+ggplot(ames_train, aes(x = Year_Built, y = Sale_Price)) + 
+  geom_point(alpha = 0.4) +
+    scale_x_log10() + 
+  scale_y_continuous(breaks = price_breaks, trans = "log10" ) +
+  geom_smooth(method = "loess")
+```
+
+Separate between airconditining or not
+
+```{r}
+library(MASS) # to get robust linear regression model, see rlm below
+
+ggplot(ames_train, 
+       aes(x = Year_Built, 
+           y = Sale_Price)) + 
+  geom_point(alpha = 0.4) +
+  scale_y_continuous(breaks = price_breaks, 
+                     trans = "log10") + 
+  facet_wrap(~ Central_Air, nrow = 2) +
+  geom_smooth(method = "rlm")
+```
+
+Compares plain model with one which allows for interaction between year_built and central_air
+
+```{r}
+mod1 <- lm(log10(Sale_Price) ~ Year_Built + Central_Air, data = ames_train)
+mod2 <- lm(log10(Sale_Price) ~ Year_Built + Central_Air +
+             Year_Built: Central_Air, data = ames_train)
+anova(mod1, mod2)
+```
+
+Note: "y ~ x + y + x:y" is the same as "y ~ x * y"
+source: https://www.datacamp.com/community/tutorials/r-formula-tutorial
+
+```{r}
+mod3 <- lm(log10(Sale_Price) ~ Year_Built * Central_Air, data = ames_train)
+anova(mod1,mod3)
+```
+

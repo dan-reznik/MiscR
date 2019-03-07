@@ -1,0 +1,110 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(multidplyr)
+library(nycflights13)
+```
+
+```{r}
+flights1 <- partition(flights, flight)
+#> Initialising 7 core cluster.
+flights2 <- summarise(flights1, dep_delay = mean(dep_delay, na.rm = TRUE))
+flights3 <- collect(flights2)
+```
+
+```{r}
+flights2
+```
+
+```{r}
+system.time({
+  flights %>% 
+    partition() %>%
+    summarise(mean(dep_delay, na.rm = TRUE)) %>% 
+    collect()
+})
+```
+
+```{r}
+system.time({
+  flights %>% 
+    group_by() %>%
+    summarise(mean(dep_delay, na.rm = TRUE))
+})
+```
+
+```{r}
+common_dest <- flights %>%
+  count(dest) %>%
+  filter(n >= 365) %>%
+  semi_join(flights, .) %>% 
+  mutate(yday = lubridate::yday(ISOdate(year, month, day)))
+# Joining, by = "dest"
+dim(common_dest)
+```
+
+Set default cluster to be used by partition below
+```{r}
+cluster <- create_cluster(4)
+set_default_cluster(cluster)
+```
+
+```{r}
+by_dest <- common_dest %>% 
+  partition(dest, cluster = cluster)
+by_dest
+```
+
+```{r}
+cluster_library(by_dest, "mgcv")
+system.time({
+  models <- by_dest %>% 
+    do(mod = gam(dep_delay ~ s(yday) + s(dep_time), data = .))
+})
+```
+
+Create 1B row dataframe
+
+```{r}
+largeDF <- data_frame(rand=runif(1e9)) %>%
+  transmute(row=row_number(),rand)
+object.size(largeDF)/2^30 # in Gb
+```
+
+```{r}
+nrow(largeDF)/10^6
+```
+
+```{r}
+largeDF %>% summarise(sum=sum(rand))
+```
+
+
+Pre-partition (this takes time!)
+
+```{r}
+largeDF_part <- largeDF %>% head(1e7) %>%
+  mutate(rowMod=row%%1e5) %>%
+  partition(rowMod)
+```
+
+Compute on partitions
+
+```{r}
+system.time({
+  largeDF_part %>%
+    summarise(sum=sum(rand),mean=mean(rand)) %>% 
+    collect()
+})
+```
+
+```{r}
+system.time({
+  largeDF %>% head(1e8) %>%
+    summarise(sum=sum(rand),mean=mean(rand))
+})
+```

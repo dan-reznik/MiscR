@@ -1,0 +1,57 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(plotly)
+
+packageVersion('plotly')
+```
+
+```{r}
+myBoxPlot <- midwest %>%
+  ggplot(aes(x=state, y=percollege)) +
+  geom_boxplot(aes(fill=state)) +
+  coord_flip()
+myBoxPlot
+```
+
+Claudio: this is the key
+
+```{r}
+ggplotly(myBoxPlot)
+```
+
+```{r}
+Sys.setenv("plotly_username"="dreznik")
+Sys.setenv("plotly_api_key"="3Y9yHCnIf9ZZ1SdGSR7h")
+```
+
+Publish to plotly's website
+
+```{r}
+link <- api_create(myBoxPlot,filename = "midwest-boxplots-using-r")
+#,sharing = "private") # c("public", "private", "secret")
+link$web_url
+```
+
+
+```{r}
+plot_ly(midwest, x = ~percollege, color = ~state, type = "box") %>%
+  layout(plot_bgcolor='rgb(100, 100, 100)', plot_gridcolor="rgb(0,0,0)")
+```
+
+
+
+```{r}
+p<-plot_ly(midwest, x = ~percollege, color = ~state, type = "box")
+link <- api_create(p,filename = "midwest-boxplots")
+#,sharing = "private") # c("public", "private", "secret")
+link$web_url
+```
+
+
+

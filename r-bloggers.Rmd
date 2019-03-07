@@ -1,0 +1,57 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(glue)
+library(fs)
+```
+
+
+```{r}
+dir_ls(regexp=".*txt")
+```
+
+```{r}
+lines <- read_lines("r-bloggers-posts.txt")
+lines[1]
+```
+
+```{r}
+get_fmt <- function(s) s %>%
+  str_replace_all("[a-z]","x") %>%
+  str_replace_all("[A-Z]","X") %>%
+  str_replace_all("[0-9]","9")
+lines[1] %>% get_fmt
+```
+
+```{r}
+df_lines <- tibble(lines=lines,
+                   fmt=lines %>% get_fmt)
+df_lines %>% count(fmt,sort=T)
+```
+
+```{r}
+df_lines_clean <- df_lines %>%
+  separate(lines,
+           into=c("month","year","count"),
+           sep=" ",
+           convert = T) %>%
+  mutate(count=count%>%str_remove_all("[()]")%>%as.integer,
+         date_str=glue("01-{month}-{year}"),
+         date=parse_date(date_str,format='%d-%B-%Y')) %>%
+  arrange(date)
+```
+
+```{r}
+df_lines_clean %>%
+  head(-1) %>% # don't show last partial month
+  ggplot(aes(date,count))+
+  geom_point() +
+  geom_line() +
+  geom_smooth()
+```
+

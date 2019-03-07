@@ -1,0 +1,62 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Calculates the natural logarithm base to arbitrary precision with a digit-by-digit ("spigot") algorithm by Sale (1968), https://goo.gl/nm7HRL
+
+```{r}
+library(tidyverse)
+library(stringr)
+```
+
+
+```{r}
+stirling <- function(m) m*(log(m)-1)+.5*log(6.2831852*m)
+find_m <- function(n) {
+  test <- (n+1L)*2.30258509
+  m <- 5L
+  while(stirling(m) <= test) m <- m+1L
+  m
+}
+  
+calc_e <- function(n) {
+  m <- find_m(n)
+  coef <- rep(1L,m) # pre-allocates coefficients
+  d <- rep(0L,n+1L) # pre-allocates digits
+  d[1L] <- 2L # first digit is 2
+  for (i in 1L:n) {
+    carry <- 0L
+    for (j in m:2L) {
+      temp <- coef[j] * 10L + carry
+      carry <- temp %/% j # integer div
+      coef[j] <- temp - carry * j
+    }
+    d[i+1L] <- carry
+  }
+  d
+}
+```
+
+Make it be string
+
+```{r}
+calc_e_s <- function(n) {
+  es <- str_c(calc_e(as.integer(n)),collapse="")
+  str_c(str_sub(es,end=1L),
+        str_sub(es,start=2L),sep=".")
+}
+```
+
+```{r}
+calc_e_s(20)
+```
+
+Digit frequency
+
+```{r}
+data_frame(digs=calc_e(1000L)) %>%
+  ggplot(aes(x=digs)) +
+  geom_histogram(bins=10,color="black",fill="gray")
+```
+
