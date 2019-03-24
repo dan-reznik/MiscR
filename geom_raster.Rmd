@@ -1,0 +1,109 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+suppressMessages(library(tidyverse))
+library(Matrix)
+```
+
+```{r}
+ggplot(faithfuld, aes(waiting, eruptions)) +
+ geom_raster(aes(fill = density), interpolate = TRUE) 
+```
+
+```{r}
+m <- Matrix::bandSparse(20,20,0)
+class(m)
+dim(m)
+```
+
+```{r}
+matrix2dfa <- function(m) m %>%
+  Matrix::summary(m) %>%
+  as_tibble
+```
+
+```{r}
+m %>% matrix2dfa
+```
+
+```{r}
+plot_mtx <- function(m,...) {
+  df_m <- matrix2dfa(m)
+  ggplot(df_m, aes(i,j)) +
+    geom_raster(fill="black",...) +
+    #scale_fill_manual(values = c("white","black")) +
+    coord_fixed() +
+    theme(legend.position = "none")
+}
+plot_mtx(m)
+```
+
+```{r}
+plot_df <- function(df,width,...) {
+  df %>%
+    mutate(density=T) %>%
+    ggplot(aes(i,j)) +
+    geom_tile(aes(fill=density),height=1,width=1,...) +
+    coord_fixed(xlim=c(1,width),ylim=c(1,width)) +
+    # scale_fill_manual(values = c("black","white")) +
+    #coord_cartesian(xlim=c(1L,width),ylim=c(1L,width)) +
+    theme(legend.position = "none",
+          axis.title = element_blank(),
+          axis.text = element_blank(),
+          panel.grid = element_blank(),
+          #panel.grid.minor = element_blank(),
+          axis.ticks = element_blank())
+}
+```
+
+Generate random samples in matrix
+```{r}
+random_df <- function(width,samples) {
+  tibble(i=sample.int(width,samples,replace=T),
+         j=sample.int(width,samples,replace=T))
+}
+sparse_to_df <- function(m) m %>% Matrix::summary() %>% as_tibble() %>% select(i,j)
+df_to_sparse <- function(df,width) {
+  m <- Matrix(F,width,width,sparse=T) #"lsparseMatrix"
+  df %>% pmap(~{m[..1,..2]<<-T})
+  m
+}
+```
+
+```{r}
+df10 <- random_df(10,10)
+m0 <- df10 %>% df_to_sparse(10)
+m0 %>% sparse_to_df()
+```
+
+
+```{r}
+df100 <- random_df(100,1000)
+df100 %>% plot_df(100)
+```
+
+```{r}
+source("conway.R")
+```
+
+```{r}
+tibble(i=c(5,10,15),j=c(5,10,15),20)%>%
+  plot_df(20)
+```
+
+
+```{r}
+#m100 <- df100 %>% df_to_sparse(100)
+dfs <- 1:20 %>%
+  accumulate(~{conway_step(.x,100,3)},
+             .init=df100)
+```
+
+```{r}
+dfs %>% iwalk(~ggsave(sprintf("frames/%03d.png",.y),
+                      plot_df(.x,100)))
+```
+
