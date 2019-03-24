@@ -7,21 +7,40 @@ get_neighs0 <- function(i,j,width) get_neighs(i,j) %>%
   filter(between(i,1L,width),
          between(j,1L,width))
 
-count_on <- function(m,df) {
+count_on <- function(df,m) {
   df %>% pmap_int(~m[..1,..2]) %>% sum
 }
 
-conway_step <- function(df_m,width,min_neighs=2) { # sparse
-  df_neighs <- df_m %>%
+# Any live cell w/ (2,3) neighbors lives
+# Any dead cell w/ 3 neighbors lives
+
+count_neighs0 <- function(i,j,m) {
+  width <- ncol(m)
+  neighs <- get_neighs0(i,j,width) %>%
+    count_on(m)
+  neighs
+}
+
+conway_step <- function(df_m,width) { # sparse
+  m <- df_m %>% df_to_sparse(width)
+  live_cells <- df_m %>%
+    mutate(neighs=pmap_int(.,count_neighs0,m)) %>%
+    filter(neighs%in%c(2,3)) %>%
+    mutate(status="live")
+  
+  dead_cells <- df_m %>% # which are neighboring
+    #pmap(get_neighs0,width) %>% # anti_join eliminates lives
     pmap(get_neighs) %>%
     bind_rows %>%
+    distinct %>%
+    anti_join(df_m,by=c("i","j")) %>%
+    # not needed if use "get_neighs0" above
     filter(between(i,1L,width),
            between(j,1L,width)) %>%
-    distinct
-  # for every (i,j) in df_neighs i want the
-  # sum of neighbors which are on
-  m <- df_m %>% df_to_sparse(width)
-  df_keep <- df_neighs %>%
-    pmap_lgl(~{count_on(m,get_neighs0(..1,..2,width))>=min_neighs})
-  df_neighs %>% filter(df_keep)
+    mutate(neighs=pmap_int(.,count_neighs0,m)) %>%
+    filter(neighs==3) %>%
+    mutate(status="born")
+  
+  live_cells%>%bind_rows(dead_cells)%>%
+    select(i,j)
 }

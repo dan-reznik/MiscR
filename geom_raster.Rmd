@@ -6,11 +6,9 @@ output: html_notebook
 ```{r}
 suppressMessages(library(tidyverse))
 library(Matrix)
-```
-
-```{r}
-ggplot(faithfuld, aes(waiting, eruptions)) +
- geom_raster(aes(fill = density), interpolate = TRUE) 
+library(fs)
+library(magick)
+source("conway.R")
 ```
 
 ```{r}
@@ -85,25 +83,42 @@ df100 <- random_df(100,1000)
 df100 %>% plot_df(100)
 ```
 
-```{r}
-source("conway.R")
-```
 
 ```{r}
 tibble(i=c(5,10,15),j=c(5,10,15),20)%>%
   plot_df(20)
 ```
 
+Do simulation
 
 ```{r}
 #m100 <- df100 %>% df_to_sparse(100)
 dfs <- 1:20 %>%
-  accumulate(~{conway_step(.x,100,3)},
+  accumulate(~{conway_step(.x,100)},
              .init=df100)
 ```
 
 ```{r}
-dfs %>% iwalk(~ggsave(sprintf("frames/%03d.png",.y),
+dir_frames <- "frames"
+if(dir_exists(dir_frames))
+  dir_delete(dir_frames)
+dir_create(dir_frames)
+
+dfs%>%iwalk(~ggsave(sprintf("%s/%03d.png",dir_frames,.y),
                       plot_df(.x,100)))
+```
+
+
+
+```{r}
+fnames <- fs::dir_ls("frames",regexp="\\d{3}\\.png")
+images <- fnames %>% map(image_read)
+```
+
+```{r}
+images %>%
+  image_join() %>% 
+  image_animate(fps=2) %>% 
+  image_write("conway.gif")
 ```
 
