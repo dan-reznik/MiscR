@@ -32,11 +32,11 @@ conway_step <- function(df_m,width) { # sparse
     #pmap(get_neighs0,width) %>% # anti_join eliminates lives
     pmap(get_neighs) %>%
     bind_rows %>%
-    distinct %>%
-    anti_join(df_m,by=c("i","j")) %>%
     # not needed if use "get_neighs0" above
     filter(between(i,1L,width),
            between(j,1L,width)) %>%
+    distinct %>%
+    anti_join(df_m,by=c("i","j")) %>% # must not be alive
     mutate(neighs=pmap_int(.,count_neighs0,m)) %>%
     filter(neighs==3) %>%
     mutate(status="born")

@@ -93,9 +93,11 @@ Do simulation
 
 ```{r}
 #m100 <- df100 %>% df_to_sparse(100)
-dfs <- 1:20 %>%
-  accumulate(~{conway_step(.x,100)},
-             .init=df100)
+set.seed(0)
+side<-100
+dfs <- 1:60 %>%
+  accumulate(~{print(.y);conway_step(.x,side)},
+             .init=random_df(side,(side^2)/10))
 ```
 
 ```{r}
