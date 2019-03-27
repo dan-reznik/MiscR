@@ -113,12 +113,8 @@ dfs%>%iwalk(~ggsave(sprintf("%s/%03d.png",dir_frames,.y),
 
 
 ```{r}
-fnames <- fs::dir_ls("frames",regexp="\\d{3}\\.png")
-images <- fnames %>% map(image_read)
-```
-
-```{r}
-images %>%
+fs::dir_ls("frames",regexp="\\d+\\.png") %>%
+  map(image_read) %>%
   image_join() %>% 
   image_animate(fps=2) %>% 
   image_write("conway.gif")
