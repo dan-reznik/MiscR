@@ -4,8 +4,8 @@ output: html_notebook
 ---
 
 ```{r}
-library(tidyverse)
-library(lubridate)
+suppressMessages(library(tidyverse))
+suppressMessages(library(lubridate))
 ```
 
 ```{r}
@@ -41,6 +41,8 @@ df_cran %>%
   arrange(ym) %>%
   mutate(ym=ymd(ym)) %>%
   ggplot(aes(ym,cumsum(n))) +
-  geom_line(color="blue") #+geom_smooth()
+  geom_line(color="blue") + #+geom_smooth()
+  scale_x_date(date_breaks="1 year",date_labels = "%m/%y") +
+  scale_y_continuous(breaks=seq(0,12000,1000),minor_breaks =seq(0,12000,1000))
 ```
 
