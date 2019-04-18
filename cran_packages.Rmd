@@ -1,7 +1,16 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "Draw guitar fretboard"
+output: github_document
 ---
+
+```{r,echo=F}
+knitr::opts_chunk$set(
+  cache=T,
+  collapse=T,
+  comment="#>",
+  dpi=96
+)
+```
 
 
 ```{r}
