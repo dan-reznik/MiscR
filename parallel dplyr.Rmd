@@ -5,6 +5,7 @@ output: html_notebook
 
 ```{r}
 library(tidyverse)
+#devtools::install_github("hadley/multidplyr")
 library(multidplyr)
 library(nycflights13)
 ```
